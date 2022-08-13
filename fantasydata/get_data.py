@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import sys
 from typing import Any
 import pandas as pd
 import requests as req
@@ -135,9 +136,10 @@ def retreive_player_history(url_base:str, player:Player, wait_time:float = 0.1) 
     #minutes = [h["minutes"] for h in history]
     #value = [h["value"] for h in history]
 
-    df = pd.DataFrame(history)
-    df = df[['fixture', 'total_points','minutes','value','transfers_balance']]
-    player.history = df
+    if len(history) != 0:
+        df = pd.DataFrame(history)
+        df = df.drop(columns=["element"])
+        player.history = df
     
     time.sleep(wait_time)
 
@@ -153,7 +155,7 @@ def add_player_history(url_base:str, players:list[Player]) -> None:
             print("trying again for ",p)
             retreive_player_history(url_base,p)
             if p.history is None:
-                raise RuntimeError(f"Unable to get history for player {p}\n")
+                print(f"Unable to get history for player {p}\n")
 
     t1 = time.time()
 
@@ -187,44 +189,45 @@ def retreive_matches(url_base:str, teams:list[Team]) -> list[Match]:
 
     return matches
  
-def retreive_raw_data(url_base) -> tuple[list[Player],list[Team],list[Match],Squad]:
+def retreive_raw_data(url_base:str, squad_id:int) -> tuple[list[Player],list[Team],list[Match],Squad]:
 
     players,teams = retreive_players_and_teams(url_base) 
     add_player_history(url_base,players)
 
     matches = retreive_matches(url_base,teams)
+    matches = sorted(matches, key=lambda x: x.start_time)
 
-    squad_id = 9438 
     squad = retreive_squad(url_base,squad_id)
 
     return players,teams,matches,squad
 
-def save_all_data(players:list[Player], teams:list[Team], matches:list[Match], squad:Squad):
+def save_all_data(players:list[Player], teams:list[Team], matches:list[Match], squad:Squad, suffix:str = "raw") -> None:
 
     player_df = ut.list_to_dataframe(players)
-    player_df.to_csv("players.csv",sep=";",index=False)
+    player_df.to_csv(f"players_{suffix}.csv",sep=";",index=False)
 
     team_df = ut.list_to_dataframe(teams)
-    team_df.to_csv("teams.csv",sep=";",index=False)
+    team_df.to_csv(f"teams_{suffix}.csv",sep=";",index=False)
 
     match_df = ut.list_to_dataframe(matches)
-    match_df.to_csv("matches.csv",sep=";",index=False)
+    match_df.to_csv(f"matches_{suffix}.csv",sep=";",index=False)
 
     squad_df = squad.to_dataframe()
-    squad_df.to_csv("squad.csv",sep=";",index=False)
+    squad_df.to_csv(f"squad_{suffix}.csv",sep=";",index=False)
 
-def read_data_from_csv() -> tuple[list[Player],list[Team],list[Match],Squad]:
+def read_data_from_csv(suffix:str = "raw") -> tuple[list[Player],list[Team],list[Match],Squad]:
 
-    player_df = pd.read_csv("players.csv",sep=";")
+    player_df = pd.read_csv(f"players_{suffix}.csv",sep=";")
     players = ut.dataframe_to_players(player_df)
 
-    team_df = pd.read_csv("teams.csv",sep=";")
+    team_df = pd.read_csv(f"teams_{suffix}.csv",sep=";")
     teams = ut.dataframe_to_teams(team_df)  
 
-    match_df = pd.read_csv("matches.csv",sep=";")
+    match_df = pd.read_csv(f"matches_{suffix}.csv",sep=";")
     matches = ut.dataframe_to_matches(match_df)    
+    matches = sorted(matches, key=lambda x: x.start_time)
 
-    squad_df = pd.read_csv("squad.csv",sep=";")
+    squad_df = pd.read_csv(f"squad_{suffix}.csv",sep=";")
     squad = ut.dataframe_to_squad(squad_df)        
 
     return players,teams,matches,squad

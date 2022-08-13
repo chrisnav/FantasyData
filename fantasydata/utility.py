@@ -10,6 +10,11 @@ def string_to_int_list(s:str) -> list[int]:
     s = s.split(",")
     return [int(val) for val in s]
 
+def convert_df_to_int(x):
+    try:
+        return x.astype(int)
+    except:
+        return x
 
 def get_team_from_id(teams:list[Team], team_id:int) -> Team:
     
@@ -76,8 +81,13 @@ def dataframe_to_players(df:pd.DataFrame) -> list[Player]:
         current_team_name = player_df["current_team_name"].values[-1]
 
         p = Player(player_id,name,position,current_team_id,current_team_name)
-        p.history = player_df.drop(columns=["player_id","name","position","current_team_id","current_team_name"])
-        p.history.reset_index(drop=True, inplace=True)
+        history = player_df.drop(columns=["player_id","name","position","current_team_id","current_team_name"])
+        history.reset_index(drop=True, inplace=True)
+        history = history.apply(convert_df_to_int)
+
+        if len(history.keys()) != 0:
+            p.history = history
+
         players.append(p)
 
     return players
@@ -101,7 +111,13 @@ def dataframe_to_teams(df:pd.DataFrame) -> list[Team]:
         t = Team(team_id,name,team_code)
         t.current_player_ids = current_player_ids
 
-        #t.history = player_df.drop(columns=["player_id","name","position","current_team_id","current_team_name"])
+        history = team_df.drop(columns=["team_id","name","team_code","current_player_ids"])
+        history.reset_index(drop=True, inplace=True)
+        history = history.apply(convert_df_to_int)
+
+        if len(history.keys()) != 0:
+            t.history = history
+
         teams.append(t)
 
     return teams    

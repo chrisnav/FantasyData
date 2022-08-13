@@ -1,6 +1,6 @@
 from typing import Sequence
 import pandas as pd
-
+import numpy as np
 class Player:
     
     _id:int
@@ -10,6 +10,7 @@ class Player:
     current_team_id:int
     current_team_name:str
     history:pd.DataFrame
+    predicted_points:list[int]
 
     def __init__(self, id:int, name:str, position:str, team_id:int, team_name:str) -> None:
         if id < 1:
@@ -24,6 +25,7 @@ class Player:
         self.current_team_name = team_name
         self.chance_of_playing = 1.0
         self.history = None
+        self.predicted_points = []
 
     @property
     def id(self) -> int:
@@ -42,6 +44,19 @@ class Player:
         if self.history is None:
             return 0
         return self.history["value"].values[-1]
+
+    @property
+    def current_form(self) -> float:
+        if self.history is None:
+            return 0.0
+        return np.mean(self.history["total_points"].values[-4:])   
+
+    def calc_norm_form(self) -> float:
+        if self.history is None:
+            return 0.0
+        points = self.history["total_points"].values
+        n = len(points)        
+        return sum(p*2**(n-1-i) for i,p in enumerate(points[::-1]))/(2**n - 1)               
 
     def to_dataframe(self) -> pd.DataFrame:
 
@@ -64,7 +79,6 @@ class Player:
 
     def __str__(self) -> str:
         return f"Player {self.id}, {self.name}, {self.position}, {self.current_team_name}\n"     
-
 class Team:
     
     _id:int
@@ -95,6 +109,18 @@ class Team:
     def name(self) -> str:
         return self._name 
 
+    @property
+    def current_elo(self) -> float:
+        if self.history is None:
+            return 1000.0            
+        return self.history["elo_after_match"].values[-1]   
+
+    @property
+    def current_form(self) -> float:
+        if self.history is None:
+            return 0.5            
+        return self.history["form"].values[-1]                 
+
     def to_dataframe(self) -> pd.DataFrame:
 
         if self.history is None:
@@ -102,13 +128,14 @@ class Team:
             df["team_id"] = [self.id]
             df["name"] = [self.name]
             df["team_code"] = [self.code]
+            df["current_player_ids"] = [self.current_player_ids]
         else:
             df = pd.DataFrame(self.history)
             df["team_id"] = self.id
             df["name"] = self.name
             df["team_code"] = self.code
+            df["current_player_ids"] = [self.current_player_ids for i in range(len(df))]
             
-        df["current_player_ids"] = [self.current_player_ids]
         return df
 
     def __str__(self) -> str:
