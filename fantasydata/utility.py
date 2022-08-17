@@ -1,4 +1,5 @@
 from re import S
+import sys
 from typing import Union
 from classes import Player, Team, Squad, Match
 import pandas as pd
@@ -9,12 +10,6 @@ def string_to_int_list(s:str) -> list[int]:
     s = s.replace("]","")
     s = s.split(",")
     return [int(val) for val in s]
-
-def convert_df_to_int(x):
-    try:
-        return x.astype(int)
-    except:
-        return x
 
 def get_team_from_id(teams:list[Team], team_id:int) -> Team:
     
@@ -31,6 +26,14 @@ def get_team_from_code(teams:list[Team], team_code:int) -> Team:
             return t
             
     raise ValueError(f"Team with code {team_code} not found in list") 
+
+def get_team_from_name(teams:list[Team], name:str) -> Team:
+    
+    for t in teams:
+        if name in t.name:
+            return t
+            
+    raise ValueError(f"Team with name {name} not found in list") 
 
 def get_player_from_id(players:list[Player], player_id:int) -> Player:
     
@@ -55,6 +58,13 @@ def get_match_from_id(matches:list[Match], id:int) -> Match:
             return m
             
     raise ValueError(f"Match with id {id} not found in list") 
+
+def get_next_round(matches:list[Match]) -> int:
+
+    for m in matches:
+        if not m.finished:
+            return m.round
+    return -1
 
 def list_to_dataframe(object_list:list[Union[Player,Team,Match]]) -> pd.DataFrame:
     
@@ -83,7 +93,15 @@ def dataframe_to_players(df:pd.DataFrame) -> list[Player]:
         p = Player(player_id,name,position,current_team_id,current_team_name)
         history = player_df.drop(columns=["player_id","name","position","current_team_id","current_team_name"])
         history.reset_index(drop=True, inplace=True)
-        history = history.apply(convert_df_to_int)
+
+        for attr in history.keys():
+            if attr in ["ict_index","threat","creativity","influence"]:
+                continue
+            else:
+                try:
+                    history[attr] = history[attr].astype(int)
+                except ValueError:
+                    pass
 
         if len(history.keys()) != 0:
             p.history = history
@@ -113,7 +131,6 @@ def dataframe_to_teams(df:pd.DataFrame) -> list[Team]:
 
         history = team_df.drop(columns=["team_id","name","team_code","current_player_ids"])
         history.reset_index(drop=True, inplace=True)
-        history = history.apply(convert_df_to_int)
 
         if len(history.keys()) != 0:
             t.history = history
@@ -139,13 +156,23 @@ def dataframe_to_matches(df:pd.DataFrame) -> list[Match]:
         home_goals = match_df["home_goals"].values[-1]
         away_goals = match_df["away_goals"].values[-1]
         finished = bool(match_df["finished"].values[-1])
-
+        
         if finished:
             m = Match(match_id,round,home_team_name,home_team_id,away_team_name,away_team_id,start_time,finished=True,home_goals=home_goals,away_goals=away_goals)
         else:
             m = Match(match_id,round,home_team_name,home_team_id,away_team_name,away_team_id,start_time)
 
+        try:
+            m.delta_elo = match_df["delta_elo"].values[-1]
+            m.delta_form = match_df["delta_form"].values[-1]
+            m.expected_home_score = match_df["expected_home_score"].values[-1]
+            m.expected_away_score = match_df["expected_away_score"].values[-1]
+        except KeyError:
+            pass
+
         matches.append(m)
+
+    matches = sorted(matches, key=lambda x: x.start_time)
 
     return matches    
 

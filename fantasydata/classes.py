@@ -67,6 +67,7 @@ class Player:
             df["position"] = [self.position]
             df["current_team_id"] = [self.current_team_id]
             df["current_team_name"] = [self.current_team_name]
+            df["predicted_points"] = [self.predicted_points]
         else:
             df = pd.DataFrame(self.history)
             df["player_id"] = self.id
@@ -74,6 +75,7 @@ class Player:
             df["position"] = self.position
             df["current_team_id"] = self.current_team_id
             df["current_team_name"] = self.current_team_name
+            df["predicted_points"] = [self.predicted_points for i in range(len(df))]
 
         return df
 
@@ -223,6 +225,10 @@ class Match:
     away_goals:int
     finished:bool
     start_time:pd.Timestamp
+    delta_elo:float
+    delta_form:float
+    expected_home_score:float    
+    expected_away_score:float
 
     def __init__(self, id:int, round:int, home_team_name:str, home_team_id:int, away_team_name:str, away_team_id:int, start_time:pd.Timestamp, home_goals:int = 0, away_goals:int = 0, finished:bool = False) -> None:
         self._id = id
@@ -232,10 +238,14 @@ class Match:
         self.home_team_name = home_team_name
         self.away_team_name = away_team_name        
         self.start_time = start_time
-
         self.home_goals = home_goals
         self.away_goals = away_goals
         self.finished = finished
+
+        self.delta_elo = 0.0
+        self.delta_form = 0.0
+        self.expected_home_score = 0.5
+        self.expected_away_score = 0.5        
 
     @property
     def id(self) -> int:
@@ -257,6 +267,11 @@ class Match:
         df["finished"] = [self.finished]
         df["home_goals"] = [self.home_goals]
         df["away_goals"] = [self.away_goals]
+        df["delta_elo"] = [self.delta_elo]
+        df["delta_form"] = [self.delta_form]
+        df["expected_home_score"] = [self.expected_home_score]
+        df["expected_away_score"] = [self.expected_away_score]
+
         return df
 
     def __str__(self) -> str:

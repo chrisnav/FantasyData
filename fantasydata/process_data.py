@@ -38,56 +38,23 @@ def add_previous_team_to_player(p:Player, matches:list[Match]) -> None:
     if len(matches_played) == 1:
         p.history["team_id"] = [p.current_team_id]
         return
-    
-    #The two first matches played
-    m0 = ut.get_match_from_id(matches,matches_played[0])
-    m1 = ut.get_match_from_id(matches,matches_played[1])
 
-    #One of the teams should appear in both the first and second match
-    if m0.home_team_id in [m1.home_team_id, m1.away_team_id]:
-        team = m0.home_team_id
-    elif m0.away_team_id in [m1.home_team_id, m1.away_team_id]:
-        team = m0.away_team_id
-    else:
-        print("Unable to match first team, using initial home team")
-        team = m0.home_team_id
-    
-    prev_teams = [team, team]
-    n_matches = len(matches_played)
-
-    for i in range(2,n_matches):
-
-        m = ut.get_match_from_id(matches,matches_played[i])
-
-        home = m.home_team_id
-        away = m.away_team_id
-
-        #The team the player played for in the previous match is also found in this match
-        if team in [home,away]:
-            prev_teams.append(team)
-        #The player must have changed teams this round!
-        elif i != n_matches-1:
-            
-            #Look at the teams that played in the next match
-            m_next = ut.get_match_from_id(matches,matches_played[i+1])
-
-            if m.home_team_id in [m_next.home_team_id, m_next.away_team_id]:
-                team = m.home_team_id
-            elif m.away_team_id in [m_next.home_team_id, m_next.away_team_id]:
-                team = m.away_team_id
-            else:
-                raise RuntimeError("Unable to match first team")     
-
-            prev_teams.append(team)
-        #The player changed team in the last round played, check that the current_team_id played in the match
-        elif p.current_team_id in [home,away]:
-            team = p.current_team_id
-            prev_teams.append(team)
+    opponents = p.history["opponent_team"].values
+    prev_teams = []
+    for m_id,opp_id in zip(matches_played,opponents):
+        m = ut.get_match_from_id(matches,m_id)
+        
+        if m.home_team_id == opp_id:
+            team_id = m.away_team_id
+        elif m.away_team_id == opp_id:
+            team_id = m.home_team_id
         else:
-            raise RuntimeError(f"Unable to find previous team: {team}\n {m}")
-    
-    #Add the list of previous team ids to the player history
+            raise RuntimeError(f"Unable to find team for {p} in match {m}")
+        
+        prev_teams.append(team_id)
+
     p.history["team_id"] = prev_teams
+
 
 def add_rounds_to_player(p:Player, matches:list[Match]) -> None:
     
@@ -105,40 +72,92 @@ def add_rounds_to_player(p:Player, matches:list[Match]) -> None:
 
     p.history["round"] = rounds
    
-def add_result_and_form_to_team(t:Team, matches:list[Match]) -> None:
+def add_result_and_form_to_team(teams:list[Team], matches:list[Match]) -> None:
 
-    team_matches = [m for m in matches if t.id in [m.home_team_id,m.away_team_id] and m.finished]
+    for t in teams:
 
-    rounds = [m.round for m in team_matches]
-    match_id = [m.id for m in team_matches]
-    results = []
-    form = []
-    for m in team_matches:
+        team_matches = [m for m in matches if t.id in [m.home_team_id,m.away_team_id] and m.finished]
 
-        r = 0.5
-        if m.home_goals > m.away_goals:
-            if t.id == m.home_team_id:
-                r = 1.0
-            else:
-                r = 0.0
-        elif m.home_goals < m.away_goals:
-            if t.id == m.home_team_id:
-                r = 0.0
-            else:
-                r = 1.0
+        rounds = [m.round for m in team_matches]
+        match_id = [m.id for m in team_matches]
+        results = []
+        form = []
+        for m in team_matches:
 
-        results.append(r)     
+            r = 0.5
+            if m.home_goals > m.away_goals:
+                if t.id == m.home_team_id:
+                    r = 1.0
+                else:
+                    r = 0.0
+            elif m.home_goals < m.away_goals:
+                if t.id == m.home_team_id:
+                    r = 0.0
+                else:
+                    r = 1.0
 
-        form.append(calc_team_form(results))
+            results.append(r)     
 
+            f = calc_team_form(results)
+            form.append(f)
+
+        
+        if t.history is None:
+            t.history = pd.DataFrame()
+        
+        t.history["rounds"] = rounds
+        t.history["match_id"] = match_id
+        t.history["results"] = results
+        t.history["form"] = form
+
+    next_round = ut.get_next_round(matches)
     
-    if t.history is None:
-        t.history = pd.DataFrame()
-    
-    t.history["rounds"] = rounds
-    t.history["match_id"] = match_id
-    t.history["results"] = results
-    t.history["form"] = form
+    for m in matches:
+        
+        if not m.finished and m.round != next_round:
+            continue
+
+        home = ut.get_team_from_id(teams,m.home_team_id)
+        away = ut.get_team_from_id(teams,m.away_team_id)
+
+        home_form = home.history["form"].values
+        away_form = away.history["form"].values
+
+        if m.round == next_round:
+            m.delta_form = home_form[-1] - away_form[-1]
+            continue
+
+        found_match = False
+        for i,hf in enumerate(home_form):
+            if home.history["match_id"].values[i] == m.id:
+                if i == 0:
+                    m.delta_form = 0.5
+                else:
+                    m.delta_form = home_form[i-1]
+
+                found_match = True
+                break
+
+        if not found_match:
+            print("Did not find match for home team:",m)
+            m.delta_form = 0.5
+
+        found_match = False
+        for i,af in enumerate(away_form):
+            if away.history["match_id"].values[i] == m.id:
+                if i == 0:
+                    m.delta_form -= 0.5
+                else:
+                    m.delta_form -= away_form[i-1]  
+
+                found_match = True
+                break
+
+        if not found_match:
+            print("Did not find match for away team:",m,away)
+            m.delta_form -= 0.5            
+
+
 
 def add_sum_points_to_team(t:Team, players:list[Player]) -> None:
 
@@ -172,13 +191,28 @@ def add_team_elo(teams:list[Team], matches:list[Match]) -> None:
     elo = {t.id:[1000.0] for t in teams}
     expected_result = {t.id:[] for t in teams}
 
+    next_round = ut.get_next_round(matches)
+    
     for m in matches:
         
-        if not m.finished:
+        if not m.finished and m.round != next_round:
             continue
 
         home_team = ut.get_team_from_id(teams, m.home_team_id)
         away_team = ut.get_team_from_id(teams, m.away_team_id)
+
+        prev_home_elo = elo[home_team.id][-1]
+        prev_away_elo = elo[away_team.id][-1]
+
+        home_expected_score = calc_expected_elo_score(prev_home_elo,prev_away_elo)
+        away_expected_score = 1.0 - home_expected_score
+
+        m.expected_home_score = home_expected_score
+        m.expected_away_score = away_expected_score
+        m.delta_elo = prev_home_elo - prev_away_elo
+
+        if m.round == next_round:
+            continue
 
         home_score = 0.5
 
@@ -189,17 +223,13 @@ def add_team_elo(teams:list[Team], matches:list[Match]) -> None:
 
         away_score = 1.0 - home_score
 
-        home_expected_score = calc_expected_elo_score(elo[home_team.id][-1],elo[away_team.id][-1])
-        away_expected_score = 1.0 - home_expected_score
-
-        expected_result[home_team.id].append(home_expected_score)
-        expected_result[away_team.id].append(away_expected_score)
-    
-        new_home_elo = calc_team_elo_update(elo[home_team.id][-1],elo[away_team.id][-1],home_score)
-        new_away_elo = calc_team_elo_update(elo[away_team.id][-1],elo[home_team.id][-1],away_score)
+        new_home_elo = calc_team_elo_update(prev_home_elo,prev_away_elo,home_score)
+        new_away_elo = calc_team_elo_update(prev_away_elo,prev_home_elo,away_score)
 
         elo[home_team.id].append(new_home_elo)
         elo[away_team.id].append(new_away_elo)
+        expected_result[home_team.id].append(home_expected_score)
+        expected_result[away_team.id].append(away_expected_score)          
 
     for t in teams:
         n = len(elo[t.id])
@@ -238,30 +268,62 @@ def add_player_form_score(p:Player, teams:list[Team], matches:list[Match]):
 
     p.predicted_points = predicted_points
 
+
+def add_calculated_attributes(players:list[Player], teams:list[Team], matches:list[Match], squad:Squad, save:bool = False):
+   
+    for p in players:
+        add_previous_team_to_player(p,matches)
+        add_rounds_to_player(p,matches)
+
+    add_result_and_form_to_team(teams,matches)
+    add_team_elo(teams,matches)
+
+    for t in teams:
+        add_sum_points_to_team(t,players)
+
+    for p in players:
+        add_player_form_score(p,teams,matches)
+
+    if save:
+        gd.save_all_data(players,teams,matches,squad,suffix="calc")
+
 #url_base = "https://fantasy.eliteserien.no/api/"    
 #squad_id = 9438 
 url_base = "https://fantasy.premierleague.com/api/"
 squad_id = 2796953
 
 #players,teams,matches,squad = gd.retreive_raw_data(url_base,squad_id)
-#gd.save_all_data(players,teams,matches,squad)
+#gd.save_all_data(players,teams,matches,squad,suffix="raw")
 
-players,teams,matches,squad = gd.read_data_from_csv()
- 
-for p in players:
-    add_previous_team_to_player(p,matches)
-    add_rounds_to_player(p,matches)
-
-for t in teams:
-    add_result_and_form_to_team(t,matches)
-
-add_team_elo(teams,matches)
-
-for t in teams:
-    add_sum_points_to_team(t,players)
-
-for p in players:
-    add_player_form_score(p,teams,matches)
+players,teams,matches,squad = gd.read_data_from_csv(suffix="calc")   
 
 
-gd.save_all_data(players,teams,matches,squad,suffix="calc")
+#players = [p for p in players if p.history is not None]
+
+#add_calculated_attributes(players,teams,matches,squad)
+#gd.save_all_data(players,teams,matches,squad,suffix="calc")
+
+#players = sorted(players,key=lambda x: x.current_form/x.current_value,reverse=True)
+#players = sorted(players,key=lambda x: x.calc_norm_form()/x.current_value,reverse=True)
+
+#players = sorted(players,key=lambda x: x.calc_norm_form()/x.current_value,reverse=True)
+#
+#i = 0
+#for p in players:
+#    if i == 5:
+#        break
+#    if len(p.history) < 3:
+#        continue
+#    print(p,p.calc_norm_form(),p.current_value)#,p.calc_norm_form()/p.current_value)
+#    i += 1
+
+next_round = [m for m in matches if m.round == ut.get_next_round(matches)]
+next_round = sorted(next_round,key=lambda m: abs(m.delta_elo), reverse=True)
+for m in next_round:
+    print(m,m.delta_elo,m.delta_form)
+
+#next_round = sorted(next_round,key=lambda m: abs(m.delta_form), reverse=True)
+#for m in next_round:
+#    print(m,m.delta_elo,m.delta_form)    
+
+#print(matches[1])

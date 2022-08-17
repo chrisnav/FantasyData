@@ -186,6 +186,7 @@ def retreive_matches(url_base:str, teams:list[Team]) -> list[Match]:
         
         matches.append(m)
 
+    matches = sorted(matches, key=lambda x: x.start_time)
 
     return matches
  
@@ -195,8 +196,6 @@ def retreive_raw_data(url_base:str, squad_id:int) -> tuple[list[Player],list[Tea
     add_player_history(url_base,players)
 
     matches = retreive_matches(url_base,teams)
-    matches = sorted(matches, key=lambda x: x.start_time)
-
     squad = retreive_squad(url_base,squad_id)
 
     return players,teams,matches,squad
@@ -225,7 +224,6 @@ def read_data_from_csv(suffix:str = "raw") -> tuple[list[Player],list[Team],list
 
     match_df = pd.read_csv(f"matches_{suffix}.csv",sep=";")
     matches = ut.dataframe_to_matches(match_df)    
-    matches = sorted(matches, key=lambda x: x.start_time)
 
     squad_df = pd.read_csv(f"squad_{suffix}.csv",sep=";")
     squad = ut.dataframe_to_squad(squad_df)        
