@@ -1,5 +1,4 @@
 from concurrent.futures import ThreadPoolExecutor
-import sys
 from typing import Any
 import pandas as pd
 import requests as req
@@ -197,35 +196,5 @@ def retreive_raw_data(url_base:str, squad_id:int, wait_time:float = 0.2) -> tupl
 
     matches = retreive_matches(url_base,teams)
     squad = retreive_squad(url_base,squad_id)
-
-    return players,teams,matches,squad
-
-def save_all_data(directory:str, players:list[Player], teams:list[Team], matches:list[Match], squad:Squad, suffix:str = "raw") -> None:
-
-    player_df = ut.list_to_dataframe(players)
-    player_df.to_csv(f"{directory}players_{suffix}.csv",sep=";",index=False)
-
-    team_df = ut.list_to_dataframe(teams)
-    team_df.to_csv(f"{directory}teams_{suffix}.csv",sep=";",index=False)
-
-    match_df = ut.list_to_dataframe(matches)
-    match_df.to_csv(f"{directory}matches_{suffix}.csv",sep=";",index=False)
-
-    squad_df = squad.to_dataframe()
-    squad_df.to_csv(f"{directory}squad_{suffix}.csv",sep=";",index=False)
-
-def read_data_from_csv(directory:str, suffix:str = "raw") -> tuple[list[Player],list[Team],list[Match],Squad]:
-
-    player_df = pd.read_csv(f"{directory}players_{suffix}.csv",sep=";")
-    players = ut.dataframe_to_players(player_df)
-
-    team_df = pd.read_csv(f"{directory}teams_{suffix}.csv",sep=";")
-    teams = ut.dataframe_to_teams(team_df)  
-
-    match_df = pd.read_csv(f"{directory}matches_{suffix}.csv",sep=";")
-    matches = ut.dataframe_to_matches(match_df)    
-
-    squad_df = pd.read_csv(f"{directory}squad_{suffix}.csv",sep=";")
-    squad = ut.dataframe_to_squad(squad_df)        
 
     return players,teams,matches,squad

@@ -270,14 +270,15 @@ data_dir = directory+f"post_round_{round}//"
 
 initial_elo = pd.read_csv(directory+"initial_elo.csv",sep=";")
 try:
-    players,teams,matches,squad = gd.read_data_from_csv(data_dir,suffix="raw")   
+    players,teams,matches,squad = ut.read_data_from_csv(data_dir,suffix="raw")   
 except FileNotFoundError:
     print("Raw data files not found, retreiving data...")
     players,teams,matches,squad = gd.retreive_raw_data(url_base,squad_id)
-    gd.save_all_data(data_dir, players,teams,matches,squad,suffix="raw")
+    ut.save_all_data(data_dir,players,teams,matches,squad,suffix="raw")
 
+#Filter out new players that have been transferred in from outside the league
 players = [p for p in players if p.history is not None]
 
 add_calculated_attributes(players,teams,matches,squad,initial_elo)
 
-gd.save_all_data(data_dir, players,teams,matches,squad,suffix="calc")
+ut.save_all_data(data_dir,players,teams,matches,squad,suffix="calc")
