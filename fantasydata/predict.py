@@ -1,8 +1,33 @@
+from fileinput import filename
 from fantasydata.classes import Player, Match, Squad, Team, PlayerPointPredictor
 import fantasydata.utility as ut
 import numpy as np
 import statsmodels.api as sm
 
+def linear_model_to_csv(directory:str, model:PlayerPointPredictor) -> None:
+
+    if model.opponent_form_coeff == 0.0 and model.team_delta_elo_coeff == 0.0:
+        filename = "simple_model.csv"
+    else:
+        filename = "model.csv"
+
+    with open(directory+filename,"w") as f:
+        f.write("constant;player_form;opponent_team_form;team_delta_elo\n")
+        f.write(f"{model.const};{model.player_form_coeff};{model.opponent_form_coeff};{model.team_delta_elo_coeff}")
+
+def read_linear_model(directory:str, filename:str) -> PlayerPointPredictor:
+
+    with open(directory+filename,"r") as f:
+        lines = [l for l in f]
+    
+    l = lines[1].strip()
+    l = l.split(";")
+    const = float(l[0])
+    player_form = float(l[1])
+    opponent_team_form = float(l[2])
+    team_delta_elo = float(l[3])
+
+    return PlayerPointPredictor(const,player_form,opponent_team_form,team_delta_elo)
 
 def estimate_linear_model(players:list[Player], teams:list[Team]) -> tuple[PlayerPointPredictor,PlayerPointPredictor]:
     
@@ -77,6 +102,23 @@ def estimate_linear_model(players:list[Player], teams:list[Team]) -> tuple[Playe
     coeffs = est2.params
     model = PlayerPointPredictor(coeffs[0],coeffs[1],coeffs[2],coeffs[3])
 
+    from prettyplotting import PrettyPlot as pp
+    plot = pp.Plot(title="player form")
+    plot.scatter(player_form,Y,col="k")
+    plot.scatter(player_form,Y_pred,col="r")
+    plot.show()
+
+    plot = pp.Plot(title="opponent form")
+    plot.scatter(opponent_form,Y,col="k")
+    plot.scatter(opponent_form,Y_pred,col="r")
+    plot.show()  
+
+    plot = pp.Plot(title="team elo")
+    plot.scatter(team_delta_elo,Y,col="k")
+    plot.scatter(team_delta_elo,Y_pred,col="r")
+    plot.show()   
+
+
     predictors = [player_form]
     X = np.array(predictors).T
 
@@ -97,39 +139,29 @@ def estimate_linear_model(players:list[Player], teams:list[Team]) -> tuple[Playe
     coeffs = est2.params
     simple_model = PlayerPointPredictor(coeffs[0],coeffs[1])
 
-    from prettyplotting import PrettyPlot as pp
     plot = pp.Plot(title="player form")
     plot.scatter(player_form,Y,col="k")
     plot.scatter(player_form,Y_pred,col="r")
     plot.show()
 
-    plot = pp.Plot(title="opponent form")
-    plot.scatter(opponent_form,Y,col="k")
-    plot.scatter(opponent_form,Y_pred,col="r")
-    plot.show()  
-
-    plot = pp.Plot(title="team elo")
-    plot.scatter(team_delta_elo,Y,col="k")
-    plot.scatter(team_delta_elo,Y_pred,col="r")
-    plot.show()   
-
     return model,simple_model
 
-
-def predict_player_points(players:list[Player], teams:list[Team], matches:list[Match]) -> None:
+def predict_player_points(players:list[Player], teams:list[Team], matches:list[Match], model:PlayerPointPredictor, simple_model:PlayerPointPredictor) -> None:
     
-    model, simple_model = estimate_linear_model(players,teams)
-
     next_round = ut.get_next_round(matches)
     last_round = matches[-1].round
 
     for p in players:
 
-        team = ut.get_team_from_id(teams, p.current_team_id)
+        if np.mean(p.history["total_points"].values[-4:]) < 2.0:
+            p.predicted_points = [p.current_form] * (last_round-next_round+1)
+            continue
+
         if p.chance_of_playing < 0.25:
             p.predicted_points = [0.0] * (last_round-next_round+1)
             continue
 
+        team = ut.get_team_from_id(teams, p.current_team_id)
         round_score = []
 
         for r in range(next_round,last_round+1):
@@ -152,12 +184,3 @@ def predict_player_points(players:list[Player], teams:list[Team], matches:list[M
             round_score.append(pred_score)            
 
         p.predicted_points = round_score
-
-
-#predict_player_points(players,teams,matches)
-
-#players = sorted(players,key=lambda p: p.predicted_points[0],reverse=True)
-
-#for p in players[:10]:
-#    print(p,p.predicted_points[0])
-#    print("")

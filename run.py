@@ -33,7 +33,16 @@ players = [p for p in players if p.history is not None]
 pr.add_calculated_attributes(players,teams,matches,squad,initial_elo)
 ut.save_all_data(data_dir,players,teams,matches,squad,suffix="calc")
 
-pred.predict_player_points(players,teams,matches)
+try:
+    model = pred.read_linear_model(directory,"model.csv")
+    simple_model = pred.read_linear_model(directory,"simlpe_model.csv")
+except FileNotFoundError:
+    model, simple_model = pred.estimate_linear_model(players,teams)
+    pred.linear_model_to_csv(directory,model)
+    pred.linear_model_to_csv(directory,simple_model)
+
+
+pred.predict_player_points(players,teams,matches,model,simple_model)
 
 my_players = [p for p in players if p.id in squad.current_players]
 for p in my_players:
