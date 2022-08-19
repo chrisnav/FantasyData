@@ -14,16 +14,14 @@ def calc_team_elo_update(start_elo:float, opponent_elo:float, score:float) -> fl
     K = 30.0
     return start_elo + K*(score - expected_score)
 
-def calc_team_form(past_scores:list[float]) -> float:
+def calc_norm_form(past_scores:list[float]) -> float:
 
     N = len(past_scores)
     form = 0.0
-    for i,perf in enumerate(past_scores):
-        form += perf / 2**(N-i-1)
-
-    max_form = 2.0 - 1.0/2**(N-1)
-    
-    return form/max_form
+    coeff = 0.60 
+    for i,score in enumerate(past_scores[::-1]):
+        form += score * (1.0-coeff) * coeff**i
+    return form/(1-coeff**N)
 
 def add_previous_team_to_player(p:Player, matches:list[Match]) -> None:
     
@@ -54,7 +52,6 @@ def add_previous_team_to_player(p:Player, matches:list[Match]) -> None:
         prev_teams.append(team_id)
 
     p.history["team_id"] = prev_teams
-
 
 def add_rounds_to_player(p:Player, matches:list[Match]) -> None:
     
@@ -98,7 +95,7 @@ def add_result_and_form_to_team(teams:list[Team], matches:list[Match]) -> None:
 
             results.append(r)     
 
-            f = calc_team_form(results)
+            f = calc_norm_form(results)
             form.append(f)
 
         
@@ -157,8 +154,6 @@ def add_result_and_form_to_team(teams:list[Team], matches:list[Match]) -> None:
             print("Did not find match for away team:",m,away)
             m.delta_form -= 0.5            
 
-
-
 def add_sum_points_to_team(t:Team, players:list[Player]) -> None:
 
     participating_players = [p for p in players if t.id in p.history["team_id"].values]
@@ -184,12 +179,14 @@ def add_sum_points_to_team(t:Team, players:list[Player]) -> None:
     t.history["team_points"] = team_points
     t.history["n_players"] = n_players
 
+def add_team_elo(teams:list[Team], matches:list[Match], initial_elo:pd.DataFrame) -> None:
 
-
-def add_team_elo(teams:list[Team], matches:list[Match]) -> None:
-
-    elo = {t.id:[1000.0] for t in teams}
-    expected_result = {t.id:[] for t in teams}
+    elo = {}
+    expected_result = {}
+    for t in teams:
+        df = initial_elo[initial_elo["team_name"]==t.name]
+        elo[t.id] = [df["elo"].values[0]]
+        expected_result[t.id] = []
 
     next_round = ut.get_next_round(matches)
     
@@ -237,93 +234,50 @@ def add_team_elo(teams:list[Team], matches:list[Match]) -> None:
         t.history["elo_after_match"] = elo[t.id][1:]
         t.history["expected_result"] = expected_result[t.id]
 
-def add_player_form_score(p:Player, teams:list[Team], matches:list[Match]):
+def add_player_form(p:Player) -> None:
+        form = []
+        for i in range(len(p.history)):
+            form.append(calc_norm_form(p.history["total_points"][:i+1]))
+        p.history["form"] = form
 
-    t = ut.get_team_from_id(teams,p.current_team_id)
-
-    team_form_score = -1.59 + 3.19*t.current_form
-
-    upcoming_matches = [m for m in matches if not m.finished and t.id in [m.home_team_id,m.away_team_id]]
-    remaining_rounds = set(m.round for m in upcoming_matches)
-
-    predicted_points = []
-    for next_round in remaining_rounds:
-
-        round_matches = [m for m in upcoming_matches if m.round==next_round]
-
-        round_points = 0.0
-        for m in round_matches:
-
-            if t.id == m.home_team_id:
-                opponent = ut.get_team_from_id(teams,m.away_team_id)
-            else:
-                opponent = ut.get_team_from_id(teams,m.home_team_id)
-
-            ex_score = calc_expected_elo_score(t.current_elo,opponent.current_elo)
-            team_point_boost = ex_score - 0.5
-
-            round_points += 0.9*p.current_form + 0.05*team_form_score + 0.05*team_point_boost
-
-        predicted_points.append(round_points)
-
-    p.predicted_points = predicted_points
-
-
-def add_calculated_attributes(players:list[Player], teams:list[Team], matches:list[Match], squad:Squad, save:bool = False):
+def add_calculated_attributes(players:list[Player], teams:list[Team], matches:list[Match], squad:Squad, initial_elo:pd.DataFrame) -> None:
    
     for p in players:
         add_previous_team_to_player(p,matches)
         add_rounds_to_player(p,matches)
+        add_player_form(p)
 
     add_result_and_form_to_team(teams,matches)
-    add_team_elo(teams,matches)
+    add_team_elo(teams,matches,initial_elo)
 
     for t in teams:
         add_sum_points_to_team(t,players)
 
-    for p in players:
-        add_player_form_score(p,teams,matches)
 
-    if save:
-        gd.save_all_data(players,teams,matches,squad,suffix="calc")
+eliteserien = True
 
-#url_base = "https://fantasy.eliteserien.no/api/"    
-#squad_id = 9438 
-url_base = "https://fantasy.premierleague.com/api/"
-squad_id = 2796953
+if eliteserien:
+    url_base = "https://fantasy.eliteserien.no/api/"    
+    squad_id = 9438 
+    directory = "eliteserien//2022//"
+else:
+    url_base = "https://fantasy.premierleague.com/api/"
+    squad_id = 2796953
+    directory = "premier_league//2022_2023//"
 
-#players,teams,matches,squad = gd.retreive_raw_data(url_base,squad_id)
-#gd.save_all_data(players,teams,matches,squad,suffix="raw")
+round = 18
+data_dir = directory+f"post_round_{round}//"
 
-players,teams,matches,squad = gd.read_data_from_csv(suffix="calc")   
+initial_elo = pd.read_csv(directory+"initial_elo.csv",sep=";")
+try:
+    players,teams,matches,squad = gd.read_data_from_csv(data_dir,suffix="raw")   
+except FileNotFoundError:
+    print("Raw data files not found, retreiving data...")
+    players,teams,matches,squad = gd.retreive_raw_data(url_base,squad_id)
+    gd.save_all_data(data_dir, players,teams,matches,squad,suffix="raw")
 
+players = [p for p in players if p.history is not None]
 
-#players = [p for p in players if p.history is not None]
+add_calculated_attributes(players,teams,matches,squad,initial_elo)
 
-#add_calculated_attributes(players,teams,matches,squad)
-#gd.save_all_data(players,teams,matches,squad,suffix="calc")
-
-#players = sorted(players,key=lambda x: x.current_form/x.current_value,reverse=True)
-#players = sorted(players,key=lambda x: x.calc_norm_form()/x.current_value,reverse=True)
-
-#players = sorted(players,key=lambda x: x.calc_norm_form()/x.current_value,reverse=True)
-#
-#i = 0
-#for p in players:
-#    if i == 5:
-#        break
-#    if len(p.history) < 3:
-#        continue
-#    print(p,p.calc_norm_form(),p.current_value)#,p.calc_norm_form()/p.current_value)
-#    i += 1
-
-next_round = [m for m in matches if m.round == ut.get_next_round(matches)]
-next_round = sorted(next_round,key=lambda m: abs(m.delta_elo), reverse=True)
-for m in next_round:
-    print(m,m.delta_elo,m.delta_form)
-
-#next_round = sorted(next_round,key=lambda m: abs(m.delta_form), reverse=True)
-#for m in next_round:
-#    print(m,m.delta_elo,m.delta_form)    
-
-#print(matches[1])
+gd.save_all_data(data_dir, players,teams,matches,squad,suffix="calc")

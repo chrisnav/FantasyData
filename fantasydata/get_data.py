@@ -119,7 +119,7 @@ def retreive_squad(url_base:str, squad_id:int) -> Squad:
     s = Squad(squad_id,"my_squad",history=history)        
     return s
 
-def retreive_player_history(url_base:str, player:Player, wait_time:float = 0.1) -> None:            
+def retreive_player_history(url_base:str, player:Player, wait_time:float) -> None:            
 
     url = f"{url_base}element-summary/{player.id}/"
     res = get_data(url)
@@ -143,17 +143,17 @@ def retreive_player_history(url_base:str, player:Player, wait_time:float = 0.1) 
     
     time.sleep(wait_time)
 
-def add_player_history(url_base:str, players:list[Player]) -> None:
+def add_player_history(url_base:str, players:list[Player],wait_time:float) -> None:
 
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=6) as threadPool:
         for p in players:        
-            threadPool.submit(retreive_player_history,url_base,p)
+            threadPool.submit(retreive_player_history,url_base,p,wait_time)
 
     for p in players:
         if p.history is None:
             print("trying again for ",p)
-            retreive_player_history(url_base,p)
+            retreive_player_history(url_base,p,wait_time)
             if p.history is None:
                 print(f"Unable to get history for player {p}\n")
 
@@ -190,42 +190,42 @@ def retreive_matches(url_base:str, teams:list[Team]) -> list[Match]:
 
     return matches
  
-def retreive_raw_data(url_base:str, squad_id:int) -> tuple[list[Player],list[Team],list[Match],Squad]:
+def retreive_raw_data(url_base:str, squad_id:int, wait_time:float = 0.2) -> tuple[list[Player],list[Team],list[Match],Squad]:
 
     players,teams = retreive_players_and_teams(url_base) 
-    add_player_history(url_base,players)
+    add_player_history(url_base,players,wait_time)
 
     matches = retreive_matches(url_base,teams)
     squad = retreive_squad(url_base,squad_id)
 
     return players,teams,matches,squad
 
-def save_all_data(players:list[Player], teams:list[Team], matches:list[Match], squad:Squad, suffix:str = "raw") -> None:
+def save_all_data(directory:str, players:list[Player], teams:list[Team], matches:list[Match], squad:Squad, suffix:str = "raw") -> None:
 
     player_df = ut.list_to_dataframe(players)
-    player_df.to_csv(f"players_{suffix}.csv",sep=";",index=False)
+    player_df.to_csv(f"{directory}players_{suffix}.csv",sep=";",index=False)
 
     team_df = ut.list_to_dataframe(teams)
-    team_df.to_csv(f"teams_{suffix}.csv",sep=";",index=False)
+    team_df.to_csv(f"{directory}teams_{suffix}.csv",sep=";",index=False)
 
     match_df = ut.list_to_dataframe(matches)
-    match_df.to_csv(f"matches_{suffix}.csv",sep=";",index=False)
+    match_df.to_csv(f"{directory}matches_{suffix}.csv",sep=";",index=False)
 
     squad_df = squad.to_dataframe()
-    squad_df.to_csv(f"squad_{suffix}.csv",sep=";",index=False)
+    squad_df.to_csv(f"{directory}squad_{suffix}.csv",sep=";",index=False)
 
-def read_data_from_csv(suffix:str = "raw") -> tuple[list[Player],list[Team],list[Match],Squad]:
+def read_data_from_csv(directory:str, suffix:str = "raw") -> tuple[list[Player],list[Team],list[Match],Squad]:
 
-    player_df = pd.read_csv(f"players_{suffix}.csv",sep=";")
+    player_df = pd.read_csv(f"{directory}players_{suffix}.csv",sep=";")
     players = ut.dataframe_to_players(player_df)
 
-    team_df = pd.read_csv(f"teams_{suffix}.csv",sep=";")
+    team_df = pd.read_csv(f"{directory}teams_{suffix}.csv",sep=";")
     teams = ut.dataframe_to_teams(team_df)  
 
-    match_df = pd.read_csv(f"matches_{suffix}.csv",sep=";")
+    match_df = pd.read_csv(f"{directory}matches_{suffix}.csv",sep=";")
     matches = ut.dataframe_to_matches(match_df)    
 
-    squad_df = pd.read_csv(f"squad_{suffix}.csv",sep=";")
+    squad_df = pd.read_csv(f"{directory}squad_{suffix}.csv",sep=";")
     squad = ut.dataframe_to_squad(squad_df)        
 
     return players,teams,matches,squad

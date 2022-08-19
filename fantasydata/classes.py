@@ -1,6 +1,5 @@
-from typing import Sequence
+from dataclasses import dataclass
 import pandas as pd
-import numpy as np
 class Player:
     
     _id:int
@@ -10,7 +9,7 @@ class Player:
     current_team_id:int
     current_team_name:str
     history:pd.DataFrame
-    predicted_points:list[int]
+    predicted_points:list[float]
 
     def __init__(self, id:int, name:str, position:str, team_id:int, team_name:str) -> None:
         if id < 1:
@@ -49,14 +48,7 @@ class Player:
     def current_form(self) -> float:
         if self.history is None:
             return 0.0
-        return np.mean(self.history["total_points"].values[-4:])   
-
-    def calc_norm_form(self) -> float:
-        if self.history is None:
-            return 0.0
-        points = self.history["total_points"].values
-        n = len(points)        
-        return sum(p*2**(n-1-i) for i,p in enumerate(points[::-1]))/(2**n - 1)               
+        return self.history["form"].values[-1]               
 
     def to_dataframe(self) -> pd.DataFrame:
 
@@ -281,3 +273,19 @@ class Match:
         else:
             s += f"starts {self.start_time}\n"
         return s
+
+@dataclass
+class PlayerPointPredictor:
+
+    const:float
+    player_form_coeff:float
+    opponent_form_coeff:float = 0.0
+    team_delta_elo_coeff:float = 0.0
+
+    def predict(self, player:Player, team:Team, opponent_team: Team) -> float:
+
+        delta_elo = team.current_elo - opponent_team.current_elo
+        opponent_form = opponent_team.current_form
+        player_form = player.current_form
+
+        return self.const + self.player_form_coeff*player_form + self.opponent_form_coeff*opponent_form + self.team_delta_elo_coeff*delta_elo
