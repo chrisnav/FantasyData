@@ -3,8 +3,8 @@ from typing import Any
 import pandas as pd
 import requests as req
 import json
-from classes import Player, Team, Squad, Match
-import utility as ut
+from fantasydata.classes import Player, Team, Squad, Match
+import fantasydata.utility as ut
 import time
 
 def get_data(url:str) -> dict[str,Any]:

@@ -1,5 +1,5 @@
-from classes import Player, Match, Squad, Team, PlayerPointPredictor
-import utility as ut
+from fantasydata.classes import Player, Match, Squad, Team, PlayerPointPredictor
+import fantasydata.utility as ut
 import numpy as np
 import statsmodels.api as sm
 

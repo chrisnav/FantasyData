@@ -1,5 +1,5 @@
 from typing import Union
-from classes import Player, Team, Squad, Match
+from fantasydata.classes import Player, Team, Squad, Match
 import pandas as pd
 
 def string_to_int_list(s:str) -> list[int]:
@@ -92,7 +92,7 @@ def dataframe_to_players(df:pd.DataFrame) -> list[Player]:
 
         p = Player(player_id,name,position,current_team_id,current_team_name,current_value)
         p.squad_adjusted_value = squad_adjusted_value
-        
+
         history = player_df.drop(columns=["player_id","name","position","current_team_id","current_team_name"])
         history.reset_index(drop=True, inplace=True)
 

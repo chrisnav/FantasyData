@@ -1,7 +1,7 @@
 from math import floor
-from classes import Player, Match, Squad, Team
-import utility as ut
-import get_data as gd
+from fantasydata.classes import Player, Match, Squad, Team
+import fantasydata.utility as ut
+import fantasydata.get_data as gd
 import pandas as pd
 import numpy as np
 import sys
@@ -291,33 +291,3 @@ def add_calculated_attributes(players:list[Player], teams:list[Team], matches:li
         add_sum_points_to_team(t,players)
 
     add_squad_adjusted_player_value(players,squad)
-
-
-eliteserien = True
-
-if eliteserien:
-    url_base = "https://fantasy.eliteserien.no/api/"    
-    squad_id = 9438 
-    directory = "eliteserien//2022//"
-else:
-    url_base = "https://fantasy.premierleague.com/api/"
-    squad_id = 2796953
-    directory = "premier_league//2022_2023//"
-
-round = 19
-data_dir = directory+f"post_round_{round-1}//"
-
-initial_elo = pd.read_csv(directory+"initial_elo.csv",sep=";")
-try:
-    players,teams,matches,squad = ut.read_data_from_csv(data_dir,suffix="raw")   
-except FileNotFoundError:
-    print("Raw data files not found, retreiving data...")
-    players,teams,matches,squad = gd.retreive_raw_data(url_base,squad_id)
-    ut.save_all_data(data_dir,players,teams,matches,squad,suffix="raw")
-
-#Filter out new players that have been transferred in from outside the league
-players = [p for p in players if p.history is not None]
-
-add_calculated_attributes(players,teams,matches,squad,initial_elo)
-
-ut.save_all_data(data_dir,players,teams,matches,squad,suffix="calc")
