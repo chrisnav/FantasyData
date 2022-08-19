@@ -1,5 +1,4 @@
-from fileinput import filename
-from fantasydata.classes import Player, Match, Squad, Team, PlayerPointPredictor
+from fantasydata.classes import Player, Match, Team, PlayerPointPredictor
 import fantasydata.utility as ut
 import numpy as np
 import statsmodels.api as sm
