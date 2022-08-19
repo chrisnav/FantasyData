@@ -41,6 +41,11 @@ def retreive_players_and_teams(url_base:str) -> tuple[list[Player],list[Team]]:
     players = []    
     for p in player_data:
 
+        #if p["id"] == 237:
+        #    for k,v in p.items():
+        #        print(k,v)
+        #    a=b
+
         #element_type: 1 = gkp, 2 = def, 3 = mid, 4 = fwd
         p_type = p["element_type"]
         
@@ -60,8 +65,8 @@ def retreive_players_and_teams(url_base:str) -> tuple[list[Player],list[Team]]:
         name = p["web_name"]
         team = ut.get_team_from_code(teams,p["team_code"])
         #value = p["now_cost"]
-        chance_of_playing = p["chance_of_playing_next_round"]
-
+        chance_of_playing = p["chance_of_playing_this_round"]
+        current_value = p["now_cost"]
         #tot_points = p["total_points"]
         #form = p["form"]
         #minutes = p["minutes"]
@@ -71,7 +76,7 @@ def retreive_players_and_teams(url_base:str) -> tuple[list[Player],list[Team]]:
         #points_last_round = p["event_points"]
         #goals_scored = p["goals_scored"]
 
-        player = Player(player_id,name,pos,team.id,team.name)
+        player = Player(player_id,name,pos,team.id,team.name,current_value)
         team.add_current_player(player)
 
         if chance_of_playing is not None:

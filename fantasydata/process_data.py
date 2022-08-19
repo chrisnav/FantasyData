@@ -1,3 +1,4 @@
+from math import floor
 from classes import Player, Match, Squad, Team
 import utility as ut
 import get_data as gd
@@ -240,6 +241,42 @@ def add_player_form(p:Player) -> None:
             form.append(calc_norm_form(p.history["total_points"][:i+1]))
         p.history["form"] = form
 
+def add_squad_adjusted_player_value(players:list[Player], squad:Squad) -> None:
+
+    current_players = [p for p in players if p.id in squad.current_players]
+
+    for p in current_players:
+        
+        set_value = False
+
+        for r,player_ids in zip(squad.history["round"][::-1][1:],squad.history["player_ids"][::-1][1:]):
+            
+            if p.id not in player_ids:
+                
+                #Try to use the value of the player in the round he was first present
+                try:
+                    i = list(p.history["round"].values).index(r+1)
+                except ValueError:
+                    #If the round does not exist, try to use the previous round
+                    try:
+                        i = list(p.history["round"].values).index(r)   
+                    except ValueError:
+                        print(f"Unable to find round for player {p}:",r,p.history["round"],p.history["value"])
+                        sys.exit()
+
+                #The sale value is the average of the buy value and current value, rounded down
+                sale_value = floor(0.5*(p.history['value'].values[i] + p.current_value))
+                p.squad_adjusted_value = sale_value
+                set_value = True
+                break
+        
+        if not set_value:
+            print(f"Player {p} has always been in the squad, using first recorded value as buy cost")
+            
+            sale_value = floor(0.5*(p.history['value'].values[0] + p.current_value))
+            p.squad_adjusted_value = sale_value
+
+
 def add_calculated_attributes(players:list[Player], teams:list[Team], matches:list[Match], squad:Squad, initial_elo:pd.DataFrame) -> None:
    
     for p in players:
@@ -253,6 +290,8 @@ def add_calculated_attributes(players:list[Player], teams:list[Team], matches:li
     for t in teams:
         add_sum_points_to_team(t,players)
 
+    add_squad_adjusted_player_value(players,squad)
+
 
 eliteserien = True
 
@@ -265,8 +304,8 @@ else:
     squad_id = 2796953
     directory = "premier_league//2022_2023//"
 
-round = 18
-data_dir = directory+f"post_round_{round}//"
+round = 19
+data_dir = directory+f"post_round_{round-1}//"
 
 initial_elo = pd.read_csv(directory+"initial_elo.csv",sep=";")
 try:

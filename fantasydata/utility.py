@@ -87,8 +87,12 @@ def dataframe_to_players(df:pd.DataFrame) -> list[Player]:
         position = player_df["position"].values[-1]
         current_team_id = player_df["current_team_id"].values[-1]
         current_team_name = player_df["current_team_name"].values[-1]
+        current_value = player_df["current_value"].values[-1]
+        squad_adjusted_value = player_df["squad_adjusted_value"].values[-1]
 
-        p = Player(player_id,name,position,current_team_id,current_team_name)
+        p = Player(player_id,name,position,current_team_id,current_team_name,current_value)
+        p.squad_adjusted_value = squad_adjusted_value
+        
         history = player_df.drop(columns=["player_id","name","position","current_team_id","current_team_name"])
         history.reset_index(drop=True, inplace=True)
 

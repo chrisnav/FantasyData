@@ -5,13 +5,17 @@ class Player:
     _id:int
     _name:str
     _position:str    
+    _current_value:int
+
     chance_of_playing:float
     current_team_id:int
     current_team_name:str
+    squad_adjusted_value:int
+    
     history:pd.DataFrame
     predicted_points:list[float]
 
-    def __init__(self, id:int, name:str, position:str, team_id:int, team_name:str) -> None:
+    def __init__(self, id:int, name:str, position:str, team_id:int, team_name:str, current_value:int) -> None:
         if id < 1:
             raise ValueError(f"Player id is non-poisitive: {id}")
         if position not in ["fwd","mid","def","gkp"]:
@@ -20,6 +24,8 @@ class Player:
         self._id = id
         self._name = name
         self._position = position
+        self._current_value = current_value
+        self.squad_adjusted_value = current_value
         self.current_team_id = team_id
         self.current_team_name = team_name
         self.chance_of_playing = 1.0
@@ -37,12 +43,10 @@ class Player:
     @property
     def position(self) -> str:
         return self._position             
-    
+
     @property
     def current_value(self) -> int:
-        if self.history is None:
-            return 0
-        return self.history["value"].values[-1]
+        return self._current_value
 
     @property
     def current_form(self) -> float:
@@ -60,6 +64,9 @@ class Player:
             df["current_team_id"] = [self.current_team_id]
             df["current_team_name"] = [self.current_team_name]
             df["predicted_points"] = [self.predicted_points]
+            df["current_value"] = [self.current_value]
+            df["squad_adjusted_value"] = [self.squad_adjusted_value]
+
         else:
             df = pd.DataFrame(self.history)
             df["player_id"] = self.id
@@ -68,6 +75,8 @@ class Player:
             df["current_team_id"] = self.current_team_id
             df["current_team_name"] = self.current_team_name
             df["predicted_points"] = [self.predicted_points for i in range(len(df))]
+            df["current_value"] = self.current_value
+            df["squad_adjusted_value"] = self.squad_adjusted_value
 
         return df
 
