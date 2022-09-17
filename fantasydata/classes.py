@@ -66,6 +66,7 @@ class Player:
             df["predicted_points"] = [self.predicted_points]
             df["current_value"] = [self.current_value]
             df["squad_adjusted_value"] = [self.squad_adjusted_value]
+            df["chance_of_playing"] = [self.chance_of_playing]
 
         else:
             df = pd.DataFrame(self.history)
@@ -77,6 +78,7 @@ class Player:
             df["predicted_points"] = [self.predicted_points for i in range(len(df))]
             df["current_value"] = self.current_value
             df["squad_adjusted_value"] = self.squad_adjusted_value
+            df["chance_of_playing"] = self.chance_of_playing
 
         return df
 

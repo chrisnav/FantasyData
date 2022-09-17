@@ -151,11 +151,11 @@ def predict_player_points(players:list[Player], teams:list[Team], matches:list[M
     last_round = matches[-1].round
 
     for p in players:
-
+        
         if np.mean(p.history["total_points"].values[-4:]) < 2.0:
             p.predicted_points = [p.current_form] * (last_round-next_round+1)
             continue
-
+        
         if p.chance_of_playing < 0.25:
             p.predicted_points = [0.0] * (last_round-next_round+1)
             continue
@@ -174,8 +174,10 @@ def predict_player_points(players:list[Player], teams:list[Team], matches:list[M
                     opponent = ut.get_team_from_id(teams, m.away_team_id)
                 else:
                     opponent = ut.get_team_from_id(teams, m.home_team_id)
-                  
-                if len(p.history) < 3:
+                
+                if len(p.history) == 1:
+                    pred_score += p.chance_of_playing * simple_model.predict(p,team,opponent) * 0.5
+                elif len(p.history) < 3:
                     pred_score += p.chance_of_playing * simple_model.predict(p,team,opponent)    
                 else:
                     pred_score += p.chance_of_playing * model.predict(p,team,opponent)    

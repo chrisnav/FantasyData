@@ -65,7 +65,8 @@ def retreive_players_and_teams(url_base:str) -> tuple[list[Player],list[Team]]:
         name = p["web_name"]
         team = ut.get_team_from_code(teams,p["team_code"])
         #value = p["now_cost"]
-        chance_of_playing = p["chance_of_playing_this_round"]
+        chance_of_playing = p["chance_of_playing_next_round"]
+
         current_value = p["now_cost"]
         #tot_points = p["total_points"]
         #form = p["form"]
@@ -194,12 +195,12 @@ def retreive_matches(url_base:str, teams:list[Team]) -> list[Match]:
 
     return matches
  
-def retreive_raw_data(url_base:str, squad_id:int, wait_time:float = 0.2) -> tuple[list[Player],list[Team],list[Match],Squad]:
+def retreive_raw_common_data(url_base:str, wait_time:float = 0.2) -> tuple[list[Player],list[Team],list[Match]]:
 
     players,teams = retreive_players_and_teams(url_base) 
     add_player_history(url_base,players,wait_time)
 
     matches = retreive_matches(url_base,teams)
-    squad = retreive_squad(url_base,squad_id)
 
-    return players,teams,matches,squad
+    return players,teams,matches
+

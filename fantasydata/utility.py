@@ -89,15 +89,17 @@ def dataframe_to_players(df:pd.DataFrame) -> list[Player]:
         current_team_name = player_df["current_team_name"].values[-1]
         current_value = player_df["current_value"].values[-1]
         squad_adjusted_value = player_df["squad_adjusted_value"].values[-1]
+        chance_of_playing = player_df["chance_of_playing"].values[-1]
 
         p = Player(player_id,name,position,current_team_id,current_team_name,current_value)
         p.squad_adjusted_value = squad_adjusted_value
+        p.chance_of_playing = chance_of_playing
 
         history = player_df.drop(columns=["player_id","name","position","current_team_id","current_team_name"])
         history.reset_index(drop=True, inplace=True)
 
         for attr in history.keys():
-            if attr in ["ict_index","threat","creativity","influence"]:
+            if attr in ["ict_index","threat","creativity","influence","predicted_points","form"]:
                 continue
             else:
                 try:
@@ -202,9 +204,9 @@ def save_all_data(directory:str, players:list[Player], teams:list[Team], matches
     match_df.to_csv(f"{directory}matches_{suffix}.csv",sep=";",index=False)
 
     squad_df = squad.to_dataframe()
-    squad_df.to_csv(f"{directory}squad_{suffix}.csv",sep=";",index=False)
+    squad_df.to_csv(f"{directory}squad_{squad.id}_{suffix}.csv",sep=";",index=False)
 
-def read_data_from_csv(directory:str, suffix:str = "raw") -> tuple[list[Player],list[Team],list[Match],Squad]:
+def read_data_from_csv(directory:str, squad_id:int, suffix:str = "raw") -> tuple[list[Player],list[Team],list[Match],Squad]:
 
     player_df = pd.read_csv(f"{directory}players_{suffix}.csv",sep=";")
     players = dataframe_to_players(player_df)
@@ -215,7 +217,7 @@ def read_data_from_csv(directory:str, suffix:str = "raw") -> tuple[list[Player],
     match_df = pd.read_csv(f"{directory}matches_{suffix}.csv",sep=";")
     matches = dataframe_to_matches(match_df)    
 
-    squad_df = pd.read_csv(f"{directory}squad_{suffix}.csv",sep=";")
+    squad_df = pd.read_csv(f"{directory}squad_{squad_id}_{suffix}.csv",sep=";")
     squad = dataframe_to_squad(squad_df)        
 
     return players,teams,matches,squad    
