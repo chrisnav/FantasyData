@@ -1,6 +1,7 @@
 from typing import Union
 from fantasydata.classes import Player, Team, Squad, Match
 import pandas as pd
+import math
 
 def string_to_int_list(s:str) -> list[int]:
 
@@ -60,7 +61,7 @@ def get_match_from_id(matches:list[Match], id:int) -> Match:
 def get_next_round(matches:list[Match]) -> int:
 
     for m in matches:
-        if not m.finished:
+        if not m.finished and not math.isnan(m.round):
             return m.round
     return -1
 
@@ -69,7 +70,7 @@ def list_to_dataframe(object_list:list[Union[Player,Team,Match]]) -> pd.DataFram
     df = pd.DataFrame()
     for o in object_list:
         o_as_df = o.to_dataframe()
-        df = df.append(o_as_df)
+        df = pd.concat([df,o_as_df])
 
     df.reset_index(drop=True, inplace=True)
 
@@ -150,15 +151,17 @@ def dataframe_to_matches(df:pd.DataFrame) -> list[Match]:
 
     for match_id in match_ids:
         match_df = df[df["id"] == match_id]
-
-        round = match_df["round"].values[-1]
+        try:
+            round = int(match_df["round"].values[-1])
+        except ValueError:
+            round = match_df["round"].values[-1]
         home_team_name = match_df["home_team_name"].values[-1]
         away_team_name = match_df["away_team_name"].values[-1]
-        home_team_id = match_df["home_team_id"].values[-1]
-        away_team_id = match_df["away_team_id"].values[-1]
+        home_team_id = int(match_df["home_team_id"].values[-1])
+        away_team_id = int(match_df["away_team_id"].values[-1])
         start_time = pd.Timestamp(match_df["start_time"].values[-1])
-        home_goals = match_df["home_goals"].values[-1]
-        away_goals = match_df["away_goals"].values[-1]
+        home_goals = int(match_df["home_goals"].values[-1])
+        away_goals = int(match_df["away_goals"].values[-1])
         finished = bool(match_df["finished"].values[-1])
         
         if finished:

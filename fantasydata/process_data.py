@@ -249,7 +249,7 @@ def add_squad_adjusted_player_value(players:list[Player], squad:Squad) -> None:
         
         set_value = False
 
-        for r,player_ids in zip(squad.history["round"][::-1][1:],squad.history["player_ids"][::-1][1:]):
+        for r,player_ids in zip(squad.history["round"].values[::-1][1:],squad.history["player_ids"].values[::-1][1:]):
             
             if p.id not in player_ids:
                 

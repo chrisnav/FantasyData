@@ -116,7 +116,7 @@ def retreive_squad(url_base:str, squad_id:int) -> Squad:
         
         df["player_ids"] = [chosen_player_ids]
         
-        history = history.append(df)
+        history = pd.concat([history,df])
         time.sleep(0.1)
 
     history.reset_index(drop=True, inplace=True)
