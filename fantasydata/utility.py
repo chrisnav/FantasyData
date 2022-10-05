@@ -86,10 +86,10 @@ def dataframe_to_players(df:pd.DataFrame) -> list[Player]:
 
         name = player_df["name"].values[-1]
         position = player_df["position"].values[-1]
-        current_team_id = player_df["current_team_id"].values[-1]
+        current_team_id = int(player_df["current_team_id"].values[-1])
         current_team_name = player_df["current_team_name"].values[-1]
-        current_value = player_df["current_value"].values[-1]
-        squad_adjusted_value = player_df["squad_adjusted_value"].values[-1]
+        current_value = int(player_df["current_value"].values[-1])
+        squad_adjusted_value = int(player_df["squad_adjusted_value"].values[-1])
         chance_of_playing = player_df["chance_of_playing"].values[-1]
 
         p = Player(player_id,name,position,current_team_id,current_team_name,current_value)
@@ -125,7 +125,7 @@ def dataframe_to_teams(df:pd.DataFrame) -> list[Team]:
         team_df = df[df["team_id"] == team_id]
 
         name = team_df["name"].values[-1]
-        team_code = team_df["team_code"].values[-1]
+        team_code = int(team_df["team_code"].values[-1])
         current_player_ids = team_df["current_player_ids"].values[-1]
 
         #The list of ids is read as a string and must be converted back to a list of ints
@@ -185,7 +185,7 @@ def dataframe_to_matches(df:pd.DataFrame) -> list[Match]:
 
 def dataframe_to_squad(df:pd.DataFrame) -> Squad:
 
-    squad_id = df["squad_id"].values[-1]
+    squad_id = int(df["squad_id"].values[-1])
     name = df["name"].values[-1]
     history = df.drop(columns=["squad_id","name"])
     history["player_ids"] = history["player_ids"].apply(string_to_int_list)
