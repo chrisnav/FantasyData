@@ -209,7 +209,7 @@ def save_all_data(directory:str, players:list[Player], teams:list[Team], matches
     squad_df = squad.to_dataframe()
     squad_df.to_csv(f"{directory}squad_{squad.id}_{suffix}.csv",sep=";",index=False)
 
-def read_data_from_csv(directory:str, squad_id:int, suffix:str = "raw") -> tuple[list[Player],list[Team],list[Match],Squad]:
+def read_main_data_from_csv(directory:str, suffix:str = "raw") -> tuple[list[Player],list[Team],list[Match]]:
 
     player_df = pd.read_csv(f"{directory}players_{suffix}.csv",sep=";")
     players = dataframe_to_players(player_df)
@@ -218,9 +218,13 @@ def read_data_from_csv(directory:str, squad_id:int, suffix:str = "raw") -> tuple
     teams = dataframe_to_teams(team_df)  
 
     match_df = pd.read_csv(f"{directory}matches_{suffix}.csv",sep=";")
-    matches = dataframe_to_matches(match_df)    
+    matches = dataframe_to_matches(match_df)           
+
+    return players,teams,matches    
+
+def read_squad_data_from_csv(directory:str, squad_id:int, suffix:str = "raw") -> Squad:
 
     squad_df = pd.read_csv(f"{directory}squad_{squad_id}_{suffix}.csv",sep=";")
     squad = dataframe_to_squad(squad_df)        
 
-    return players,teams,matches,squad    
+    return squad       

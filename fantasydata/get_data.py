@@ -6,6 +6,7 @@ import json
 from fantasydata.classes import Player, Team, Squad, Match
 import fantasydata.utility as ut
 import time
+import numpy as np
 
 def get_data(url:str) -> dict[str,Any]:
         
@@ -174,15 +175,24 @@ def retreive_matches(url_base:str, teams:list[Team]) -> list[Match]:
     matches = []
     for match in res:
 
-        id = match["id"]
-        round = match["event"]
+        id = int(match["id"])
+
+        try:
+            round = int(match["event"])
+        except TypeError:
+            round = np.nan
+
+        try:
+            home_goals = int(match["team_h_score"])
+            away_goals = int(match["team_a_score"])
+        except TypeError:
+            home_goals = np.nan
+            away_goals = np.nan            
+
         start_time = pd.Timestamp(match["kickoff_time"])
         home = ut.get_team_from_id(teams, match["team_h"])
-        away = ut.get_team_from_id(teams, match["team_a"])
-        
-        finished = match["finished"]
-        home_goals = match["team_h_score"]
-        away_goals = match["team_a_score"]
+        away = ut.get_team_from_id(teams, match["team_a"])        
+        finished = bool(match["finished"])
 
         if finished:
             m = Match(id,round,home.name,home.id,away.name,away.id,start_time,home_goals=home_goals,away_goals=away_goals,finished=True)
