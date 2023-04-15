@@ -121,6 +121,10 @@ def add_result_and_form_to_team(teams:list[Team], matches:list[Match]) -> None:
         home_form = home.history["form"].values
         away_form = away.history["form"].values
 
+        if len(home_form) == 0 or len(away_form) == 0:
+            m.delta_form = 0.0
+            continue
+
         if m.round == next_round:
             m.delta_form = home_form[-1] - away_form[-1]
             continue
@@ -188,6 +192,7 @@ def add_team_elo(teams:list[Team], matches:list[Match], initial_elo:pd.DataFrame
         df = initial_elo[initial_elo["team_name"]==t.name]
         elo[t.id] = [df["elo"].values[0]]
         expected_result[t.id] = []
+        t.initial_elo = elo[t.id]        
 
     next_round = ut.get_next_round(matches)
     

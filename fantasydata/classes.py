@@ -50,8 +50,8 @@ class Player:
 
     @property
     def current_form(self) -> float:
-        if self.history is None:
-            return 0.0
+        if self.history is None or len(self.history["form"]) < 1:
+            return 1.0
         return self.history["form"].values[-1]               
 
     def to_dataframe(self) -> pd.DataFrame:
@@ -91,6 +91,7 @@ class Team:
     _code:int
     current_player_ids:list[int]
     history:pd.DataFrame
+    initial_elo:float
 
     def __init__(self, id:int, name:str, code:int) -> None:
         if id < 1:
@@ -101,6 +102,7 @@ class Team:
         self._code = code
         self.current_player_ids = []
         self.history = None
+        self.initial_elo = 1000.0
 
     @property
     def id(self) -> int:
@@ -116,13 +118,13 @@ class Team:
 
     @property
     def current_elo(self) -> float:
-        if self.history is None:
-            return 1000.0            
+        if self.history is None or len(self.history["elo_after_match"])<1:
+            return self.initial_elo                       
         return self.history["elo_after_match"].values[-1]   
 
     @property
     def current_form(self) -> float:
-        if self.history is None:
+        if self.history is None or len(self.history["form"]) < 1:
             return 0.5            
         return self.history["form"].values[-1]                 
 
